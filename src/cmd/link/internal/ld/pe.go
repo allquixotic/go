@@ -893,6 +893,7 @@ func dope() {
 
 	initdynimport()
 	initdynexport()
+
 }
 
 func strtbladd(name string) int {
@@ -1085,6 +1086,39 @@ func addpersrc() {
 	dd[IMAGE_DIRECTORY_ENTRY_RESOURCE].Size = h.VirtualSize
 }
 
+func addinitarray() {
+	// find the .init_array section created in data.go
+	for s := Segdata.Sect; s != nil; s = s.Next {
+		if s.Name == ".init_array" {
+			Diag("writing .init_array data to .ctors")
+
+			var init_entries []*LSym
+
+			for sym := Ctxt.Allsym; sym != nil; sym = sym.Allsym {
+				// Create a new entry in the .init_array section that points to the
+				// library initializer function.
+				if sym.Name == INITENTRY {
+					Diag("pe: adding '%v' to .ctors", sym)
+					init_entries = append(init_entries, sym)
+				}
+			}
+
+			size := 8 * len(init_entries)
+			c := addpesection(".ctors", size, size)
+			c.Characteristics = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ
+
+			Cseek(int64(c.PointerToRawData))
+			chksectoff(c, Cpos())
+			for _, sym := range init_entries {
+				Diag("pe: writing '%v' at '%v'", sym.Name, sym.Value)
+				Vputl(uint64(sym.Value) - Segtext.Vaddr)
+			}
+			break
+		}
+	}
+
+}
+
 func Asmbpe() {
 	switch Thearch.Thechar {
 	default:
@@ -1121,6 +1155,8 @@ func Asmbpe() {
 		b.Characteristics = IMAGE_SCN_CNT_UNINITIALIZED_DATA | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE | IMAGE_SCN_ALIGN_32BYTES
 		b.PointerToRawData = 0
 		bsssect = pensect
+
+		addinitarray()
 	}
 
 	if Debug['s'] == 0 {

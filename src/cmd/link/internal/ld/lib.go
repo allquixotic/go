@@ -43,6 +43,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -312,7 +313,7 @@ func (mode *BuildMode) Set(s string) error {
 		*mode = BuildmodePIE
 	case "c-archive":
 		switch goos {
-		case "darwin", "linux":
+      case "darwin", "linux", "windows":
 		default:
 			return badmode()
 		}
@@ -1011,8 +1012,8 @@ func archive() {
 	}
 
 	mayberemoveoutfile()
-	argv := []string{"ar", "-q", "-c", "-s", outfile}
-	argv = append(argv, fmt.Sprintf("%s/go.o", tmpdir))
+	argv := []string{"ar", "-v", "-q", "-c", "-s", outfile}
+	argv = append(argv, path.Join(tmpdir, "go.o"))
 	argv = append(argv, hostobjCopy()...)
 
 	if Debug['v'] != 0 {
