@@ -12,6 +12,47 @@ TEXT _rt0_amd64_windows(SB),NOSPLIT,$-8
 	MOVQ	$main(SB), AX
 	JMP	AX
 
+// When building with -buildmode=c-shared, this symbol is called when the shared
+// library is loaded.
+TEXT _rt0_amd64_windows_lib(SB),NOSPLIT,$0x48
+	MOVQ	BX, 0x10(SP)
+	MOVQ	BP, 0x18(SP)
+	MOVQ	R12, 0x20(SP)
+	MOVQ	R13, 0x28(SP)
+	MOVQ	R14, 0x30(SP)
+	MOVQ	R15, 0x38(SP)
+
+	// Create a new thread to do the runtime initialization and return.
+	MOVQ	_cgo_sys_thread_create(SB), AX
+	TESTQ	AX, AX
+	JZ	nocgo
+	MOVQ	$_rt0_amd64_windows_lib_go(SB), CX
+	MOVQ	$0, DX
+	CALL	AX
+	JMP	restore
+
+nocgo:
+	MOVQ	$8388608, 0(SP)                    // stacksize
+	MOVQ	$_rt0_amd64_windows_lib_go(SB), AX
+	MOVQ	AX, 8(SP)                          // fn
+	MOVQ	$runtime·newosproc0(SB), AX
+	CALL	AX
+
+restore:
+	MOVQ	0x10(SP), BX
+	MOVQ	0x18(SP), BP
+	MOVQ	0x20(SP), R12
+	MOVQ	0x28(SP), R13
+	MOVQ	0x30(SP), R14
+	MOVQ	0x38(SP), R15
+	RET
+
+TEXT _rt0_amd64_windows_lib_go(SB),NOSPLIT,$0
+	MOVQ  $0, DI
+	MOVQ	$0, SI
+	MOVQ	$runtime·rt0_go(SB), AX
+	JMP	AX
+
 TEXT main(SB),NOSPLIT,$-8
 	MOVQ	$runtime·rt0_go(SB), AX
 	JMP	AX
