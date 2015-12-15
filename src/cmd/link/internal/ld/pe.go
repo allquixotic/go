@@ -1093,7 +1093,6 @@ func addinitarray() {
 			Diag("writing .init_array data to .ctors")
 
 			var init_entry *LSym
-
 			for sym := Ctxt.Allsym; sym != nil; sym = sym.Allsym {
 				// Create a new entry in the .init_array section that points to the
 				// library initializer function.
@@ -1103,15 +1102,24 @@ func addinitarray() {
 				}
 			}
 
-			size := 8 
+			size := 8
 			c := addpesection(".ctors", size, size)
 			c.Characteristics = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ
 			c.SizeOfRawData = uint32(size)
+			c.VirtualSize = uint32(size)
 
 			Cseek(int64(c.PointerToRawData))
 			chksectoff(c, Cpos())
 		   Diag("pe: writing '%v' at '%x'", init_entry.Name, init_entry.Value)
 		   Vputl(uint64(init_entry.Value) )
+
+			// Write relocation entry
+			c.NumberOfRelocations = 1
+			c.PointerToRelocations = uint32(Cpos())
+		   Lputl(0)
+			Lputl(uint32(init_entry.Dynid))
+			Wputl(0x1)
+
 			break
 		}
 	}
