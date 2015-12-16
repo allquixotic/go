@@ -832,7 +832,7 @@ func perelocsect(sect *Section, first *LSym) int {
 }
 
 // peemitreloc emits relocation entries for go.o in external linking.
-func peemitreloc(text, data *IMAGE_SECTION_HEADER) {
+func peemitreloc(text, data, ctors *IMAGE_SECTION_HEADER) {
 	for Cpos()&7 != 0 {
 		Cput(0)
 	}
@@ -882,6 +882,14 @@ func peemitreloc(text, data *IMAGE_SECTION_HEADER) {
 		data.PointerToRelocations += 10 // skip the extend reloc entry
 	}
 	data.NumberOfRelocations = uint16(n - 1)
+
+	init_entry := Linklookup(Ctxt, INITENTRY, 0)
+	ctors.NumberOfRelocations = 1
+	ctors.PointerToRelocations = uint32(Cpos())
+	sectoff := ctors.VirtualAddress
+	Lputl(uint32(sectoff))
+	Lputl(uint32(init_entry.Dynid))
+	Wputl(IMAGE_REL_AMD64_ADDR64)
 }
 
 func dope() {
@@ -1086,44 +1094,19 @@ func addpersrc() {
 	dd[IMAGE_DIRECTORY_ENTRY_RESOURCE].Size = h.VirtualSize
 }
 
-func addinitarray() {
-	// find the .init_array section created in data.go
-	for s := Segdata.Sect; s != nil; s = s.Next {
-		if s.Name == ".init_array" {
-			Diag("writing .init_array data to .ctors")
+func addinitarray() (c *IMAGE_SECTION_HEADER) {
+	size := 8
+	c = addpesection(".ctors", size, size)
+	c.Characteristics = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ
+	c.SizeOfRawData = uint32(size)
+	c.VirtualSize = uint32(size)
 
-			var init_entry *LSym
-			for sym := Ctxt.Allsym; sym != nil; sym = sym.Allsym {
-				// Create a new entry in the .init_array section that points to the
-				// library initializer function.
-				if sym.Name == INITENTRY {
-					Diag("pe: adding '%v' to .ctors", sym)
-					init_entry = sym
-				}
-			}
+	Cseek(int64(c.PointerToRawData))
+	chksectoff(c, Cpos())
+	init_entry := Linklookup(Ctxt, INITENTRY, 0)
+	Vputl(uint64(init_entry.Value))
 
-			size := 8
-			c := addpesection(".ctors", size, size)
-			c.Characteristics = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ
-			c.SizeOfRawData = uint32(size)
-			c.VirtualSize = uint32(size)
-
-			Cseek(int64(c.PointerToRawData))
-			chksectoff(c, Cpos())
-		   Diag("pe: writing '%v' at '%x'", init_entry.Name, init_entry.Value)
-		   Vputl(uint64(init_entry.Value) )
-
-			// Write relocation entry
-			c.NumberOfRelocations = 1
-			c.PointerToRelocations = uint32(Cpos())
-		   Lputl(0)
-			Lputl(uint32(init_entry.Dynid))
-			Wputl(0x1)
-
-			break
-		}
-	}
-
+	return c
 }
 
 func Asmbpe() {
@@ -1147,6 +1130,7 @@ func Asmbpe() {
 	textsect = pensect
 
 	var d *IMAGE_SECTION_HEADER
+	var c *IMAGE_SECTION_HEADER
 	if Linkmode != LinkExternal {
 		d = addpesection(".data", int(Segdata.Length), int(Segdata.Filelen))
 		d.Characteristics = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE
@@ -1163,7 +1147,7 @@ func Asmbpe() {
 		b.PointerToRawData = 0
 		bsssect = pensect
 
-		addinitarray()
+		c = addinitarray()
 	}
 
 	if Debug['s'] == 0 {
@@ -1178,7 +1162,7 @@ func Asmbpe() {
 	addpesymtable()
 	addpersrc()
 	if Linkmode == LinkExternal {
-		peemitreloc(t, d)
+		peemitreloc(t, d, c)
 	}
 
 	fh.NumberOfSections = uint16(pensect)
