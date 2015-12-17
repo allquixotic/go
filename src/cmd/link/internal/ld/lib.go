@@ -1884,10 +1884,15 @@ func genasmsym(put func(*LSym, string, int, int64, int64, int, *LSym)) {
 	// These symbols won't show up in the first loop below because we
 	// skip STEXT symbols. Normal STEXT symbols are emitted by walking textp.
 	s := Linklookup(Ctxt, "runtime.text", 0)
-
 	if s.Type == obj.STEXT {
 		put(s, s.Name, 'T', s.Value, s.Size, int(s.Version), nil)
 	}
+
+	s = Linklookup(Ctxt, ".text", 0)
+	if s.Type == obj.STEXT {
+		put(s, s.Name, 'T', s.Value, s.Size, int(s.Version), nil)
+	}
+
 	s = Linklookup(Ctxt, "runtime.etext", 0)
 	if s.Type == obj.STEXT {
 		put(s, s.Name, 'T', s.Value, s.Size, int(s.Version), nil)

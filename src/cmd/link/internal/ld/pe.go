@@ -883,12 +883,12 @@ func peemitreloc(text, data, ctors *IMAGE_SECTION_HEADER) {
 	}
 	data.NumberOfRelocations = uint16(n - 1)
 
-	init_entry := Linklookup(Ctxt, INITENTRY, 0)
+	dottext := Linklookup(Ctxt, ".text", 0)
 	ctors.NumberOfRelocations = 1
 	ctors.PointerToRelocations = uint32(Cpos())
 	sectoff := ctors.VirtualAddress
 	Lputl(uint32(sectoff))
-	Lputl(uint32(init_entry.Dynid))
+	Lputl(uint32(dottext.Dynid))
 	Wputl(IMAGE_REL_AMD64_ADDR64)
 }
 
@@ -1104,7 +1104,7 @@ func addinitarray() (c *IMAGE_SECTION_HEADER) {
 	Cseek(int64(c.PointerToRawData))
 	chksectoff(c, Cpos())
 	init_entry := Linklookup(Ctxt, INITENTRY, 0)
-	Vputl(uint64(init_entry.Value))
+	Vputl(uint64(init_entry.Value) - init_entry.Sect.Vaddr)
 
 	return c
 }
