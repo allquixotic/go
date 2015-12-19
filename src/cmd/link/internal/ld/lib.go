@@ -1067,7 +1067,7 @@ func hostlink() {
 	if HEADTYPE == obj.Hopenbsd {
 		argv = append(argv, "-Wl,-nopie")
 	}
-	if HEADTYPE == obj.Hwindows {
+	if HEADTYPE == obj.Hwindows && Buildmode == BuildmodeExe {
 		if headstring == "windowsgui" {
 			argv = append(argv, "-mwindows")
 		} else {
@@ -1091,9 +1091,14 @@ func hostlink() {
 			if UseRelro() {
 				argv = append(argv, "-Wl,-z,relro")
 			}
+
+			argv = append(argv, "-shared")
+
 			// Pass -z nodelete to mark the shared library as
 			// non-closeable: a dlclose will do nothing.
-			argv = append(argv, "-shared", "-Wl,-z,nodelete")
+			if HEADTYPE != obj.Hwindows {
+				argv = append(argv, "-Wl,-z,nodelete")
+			}
 		}
 	case BuildmodeShared:
 		if UseRelro() {
