@@ -313,7 +313,7 @@ func (mode *BuildMode) Set(s string) error {
 		*mode = BuildmodePIE
 	case "c-archive":
 		switch goos {
-      case "darwin", "linux", "windows":
+		case "darwin", "linux", "windows":
 		default:
 			return badmode()
 		}
@@ -1007,6 +1007,7 @@ func hostobjCopy() (paths []string) {
 
 // archive builds a .a archive from the hostobj object files.
 func archive() {
+
 	if Buildmode != BuildmodeCArchive {
 		return
 	}

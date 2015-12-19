@@ -22,9 +22,6 @@ TEXT _rt0_amd64_windows_lib(SB),NOSPLIT,$0x48
 	MOVQ	R14, 0x30(SP)
 	MOVQ	R15, 0x38(SP)
 
-	MOVQ	DI, _rt0_amd64_windows_lib_argc<>(SB)
-	MOVQ	SI, _rt0_amd64_windows_lib_argv<>(SB)
-
 	// Create a new thread to do the runtime initialization and return.
 	MOVQ	_cgo_sys_thread_create(SB), AX
 	TESTQ	AX, AX
@@ -51,16 +48,10 @@ restore:
 	RET
 
 TEXT _rt0_amd64_windows_lib_go(SB),NOSPLIT,$0
-	MOVQ	_rt0_amd64_windows_lib_argc<>(SB), DI
-	MOVQ	_rt0_amd64_windows_lib_argv<>(SB), SI
+	MOVQ  $0, DI
+	MOVQ	$0, SI
 	MOVQ	$runtime·rt0_go(SB), AX
 	JMP	AX
-
-DATA _rt0_amd64_windows_lib_argc<>(SB)/8, $0
-GLOBL _rt0_amd64_windows_lib_argc<>(SB),NOPTR, $8
-DATA _rt0_amd64_windows_lib_argv<>(SB)/8, $0
-GLOBL _rt0_amd64_windows_lib_argv<>(SB),NOPTR, $8
-
 
 TEXT main(SB),NOSPLIT,$-8
 	MOVQ	$runtime·rt0_go(SB), AX

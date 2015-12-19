@@ -1012,7 +1012,6 @@ func dosymtype() {
 		switch Buildmode {
 		case BuildmodeCArchive, BuildmodeCShared:
 			if s.Name == INITENTRY {
-				Diag("adding '%v' to .init_array", s)
 				addinitarrdata(s)
 			}
 		}
@@ -1332,13 +1331,11 @@ func dodata() {
 	}
 
 	if hasinitarr {
-		Diag("creating .init_array section")
 		sect := addsection(&Segdata, ".init_array", 06)
 		sect.Align = maxalign(s, obj.SINITARR)
 		datsize = Rnd(datsize, int64(sect.Align))
 		sect.Vaddr = uint64(datsize)
 		for ; s != nil && s.Type == obj.SINITARR; s = s.Next {
-			Diag("processing init array value: %v", s)
 			datsize = aligndatsize(datsize, s)
 			s.Sect = sect
 			s.Value = int64(uint64(datsize) - sect.Vaddr)

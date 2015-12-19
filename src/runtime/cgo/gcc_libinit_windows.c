@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+#define WIN64_LEAN_AND_MEAN
+#include <windows.h>
+#include <process.h>
 
 #include <pthread.h>
 #include <stdio.h>
@@ -13,11 +16,12 @@ static pthread_mutex_t runtime_init_mu = PTHREAD_MUTEX_INITIALIZER;
 static int runtime_init_done;
 
 void
-x_cgo_sys_thread_create(void* (*func)(void*), void* arg) {
-	pthread_t p;
-	int err = pthread_create(&p, NULL, func, arg);
-	if (err != 0) {
-		fprintf(stderr, "pthread_create failed: %s", strerror(err));
+x_cgo_sys_thread_create(void (*func)(void*), void* arg) {
+	uintptr_t thandle;
+
+	thandle = _beginthread(func, 0, arg);
+	if(thandle == -1) {
+		fprintf(stderr, "runtime: failed to create new OS thread (%d)\n", errno);
 		abort();
 	}
 }
