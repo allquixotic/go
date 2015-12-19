@@ -26,8 +26,8 @@ TEXT _rt0_amd64_windows_lib(SB),NOSPLIT,$0x48
 	MOVQ	_cgo_sys_thread_create(SB), AX
 	TESTQ	AX, AX
 	JZ	nocgo
-	MOVQ	$_rt0_amd64_windows_lib_go(SB), DI
-	MOVQ	$0, SI
+	MOVQ	$_rt0_amd64_windows_lib_go(SB), CX
+	MOVQ	$0, DX
 	CALL	AX
 	JMP	restore
 
