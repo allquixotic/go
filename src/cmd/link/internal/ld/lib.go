@@ -391,7 +391,7 @@ func libinit() {
 		suffix = "msan"
 	}
 
-	Lflag(fmt.Sprintf("%s/pkg/%s_%s%s%s", goroot, goos, goarch, suffixsep, suffix))
+	Lflag(path.Join(goroot, "pkg", fmt.Sprintf("%s_%s%s%s", goos, goarch, suffixsep, suffix)))
 
 	mayberemoveoutfile()
 	f, err := os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0775)
@@ -454,7 +454,7 @@ func loadinternal(name string) {
 	found := 0
 	for i := 0; i < len(Ctxt.Libdir); i++ {
 		if Linkshared {
-			shlibname := fmt.Sprintf("%s/%s.shlibname", Ctxt.Libdir[i], name)
+			shlibname := path.Join(Ctxt.Libdir[i], fmt.Sprintf("%s.shlibname", name))
 			if Debug['v'] != 0 {
 				fmt.Fprintf(&Bso, "searching for %s.a in %s\n", name, shlibname)
 			}
@@ -464,7 +464,7 @@ func loadinternal(name string) {
 				break
 			}
 		}
-		pname := fmt.Sprintf("%s/%s.a", Ctxt.Libdir[i], name)
+		pname := path.Join(Ctxt.Libdir[i], fmt.Sprintf("%s.a", name))
 		if Debug['v'] != 0 {
 			fmt.Fprintf(&Bso, "searching for %s.a in %s\n", name, pname)
 		}
@@ -953,7 +953,7 @@ func hostlinksetup() {
 	coutbuf.f.Close()
 	mayberemoveoutfile()
 
-	p := fmt.Sprintf("%s/go.o", tmpdir)
+	p := path.Join(tmpdir, "go.o")
 	var err error
 	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0775)
 	if err != nil {
@@ -971,7 +971,7 @@ func hostobjCopy() (paths []string) {
 	sema := make(chan struct{}, runtime.NumCPU()) // limit open file descriptors
 	for i, h := range hostobj {
 		h := h
-		dst := fmt.Sprintf("%s/%06d.o", tmpdir, i)
+		dst := path.Join(tmpdir, fmt.Sprintf("%06d.o", i))
 		paths = append(paths, dst)
 
 		wg.Add(1)
@@ -1012,9 +1012,23 @@ func archive() {
 		return
 	}
 
+	go_object_path := path.Join(tmpdir, "go.o")
+
 	mayberemoveoutfile()
+
+	// This should always succeed. However, without this call some Windows
+	// systems do not flush correctly, which causes the go.o file to be
+	// empty when the archiver runs below. As silly as it seems, this call
+	// causes the problem to disappear.
+	fi, err := os.Stat(go_object_path)
+	if err != nil {
+		Exitf("unable to locate go.o at '%v': %v\n", go_object_path, err)
+	} else if fi.Size() == 0 {
+		Exitf("empty go.o file at '%v'", go_object_path)
+	}
+
 	argv := []string{"ar", "-v", "-q", "-c", "-s", outfile}
-	argv = append(argv, path.Join(tmpdir, "go.o"))
+	argv = append(argv, go_object_path)
 	argv = append(argv, hostobjCopy()...)
 
 	if Debug['v'] != 0 {
@@ -1127,7 +1141,7 @@ func hostlink() {
 		argv = append(argv, "-Qunused-arguments")
 	}
 
-	argv = append(argv, fmt.Sprintf("%s/go.o", tmpdir))
+	argv = append(argv, path.Join(tmpdir, "go.o"))
 	argv = append(argv, hostobjCopy()...)
 
 	if Linkshared {
@@ -1205,7 +1219,7 @@ func hostlink() {
 	if Debug['s'] == 0 && debug_s == 0 && HEADTYPE == obj.Hdarwin {
 		// Skip combining dwarf on arm.
 		if Thearch.Thechar != '5' && Thearch.Thechar != '7' {
-			dsym := fmt.Sprintf("%s/go.dwarf", tmpdir)
+			dsym := path.Join(tmpdir, "go.dwarf")
 			if out, err := exec.Command("dsymutil", "-f", outfile, "-o", dsym).CombinedOutput(); err != nil {
 				Ctxt.Cursym = nil
 				Exitf("%s: running dsymutil failed: %v\n%s", os.Args[0], err, out)
