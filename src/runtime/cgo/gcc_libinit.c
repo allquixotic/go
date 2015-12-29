@@ -2,80 +2,41 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//Requires Windows Vista, Windows Server 2008 or later
-#define _WIN32_WINNT 0x0600
-#define WIN64_LEAN_AND_MEAN
-#include <windows.h>
-#include <process.h>
+// +build darwin dragonfly freebsd linux netbsd solaris
+// +build !ppc64,!ppc64le
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> // strerror
 
-static INIT_ONCE runtime_init_once = INIT_ONCE_STATIC_INIT;
-static CRITICAL_SECTION runtime_init_cs;
-
-static HANDLE runtime_init_wait;
+static pthread_cond_t runtime_init_cond = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t runtime_init_mu = PTHREAD_MUTEX_INITIALIZER;
 static int runtime_init_done;
 
-// Pre-initialize the runtime synchronization objects
-BOOL CALLBACK 
-_cgo_preinit_runtime(PINIT_ONCE init_once_fn, PVOID param, PVOID *context) {
-   runtime_init_wait = CreateEvent(NULL, TRUE, FALSE, NULL);
-   if (runtime_init_wait == NULL) {
-		fprintf(stderr, "runtime: failed to create runtime initialization wait event.\n");
-		abort();
-   }
-
-   InitializeCriticalSection(&runtime_init_cs);
-   return TRUE;
-}
-
 void
-_cgo_maybe_run_preinit() {
-   if (!InitOnceExecuteOnce(&runtime_init_once, _cgo_preinit_runtime, NULL, NULL)) {
-		fprintf(stderr, "runtime: failed to pre-initialize the runtime.\n");
-		abort();
-   }
-}
-
-void
-x_cgo_sys_thread_create(void (*func)(void*), void* arg) {
-	uintptr_t thandle;
-
-	thandle = _beginthread(func, 0, arg);
-	if(thandle == -1) {
-		fprintf(stderr, "runtime: failed to create new OS thread (%d)\n", errno);
+x_cgo_sys_thread_create(void* (*func)(void*), void* arg) {
+	pthread_t p;
+	int err = pthread_create(&p, NULL, func, arg);
+	if (err != 0) {
+		fprintf(stderr, "pthread_create failed: %s", strerror(err));
 		abort();
 	}
-}
-
-int
-_cgo_is_runtime_initialized() {
-   EnterCriticalSection(&runtime_init_cs);
-   int status = runtime_init_done;
-   LeaveCriticalSection(&runtime_init_cs);
-   return status;
 }
 
 void
 _cgo_wait_runtime_init_done() {
-   _cgo_maybe_run_preinit();
-	while (!_cgo_is_runtime_initialized()) {
-      WaitForSingleObject(runtime_init_wait, INFINITE);
+	pthread_mutex_lock(&runtime_init_mu);
+	while (runtime_init_done == 0) {
+		pthread_cond_wait(&runtime_init_cond, &runtime_init_mu);
 	}
+	pthread_mutex_unlock(&runtime_init_mu);
 }
 
 void
 x_cgo_notify_runtime_init_done(void* dummy) {
-   _cgo_maybe_run_preinit();
-   
-   EnterCriticalSection(&runtime_init_cs);
+	pthread_mutex_lock(&runtime_init_mu);
 	runtime_init_done = 1;
-   LeaveCriticalSection(&runtime_init_cs);
-   
-   if (!SetEvent(runtime_init_wait)) {
-		fprintf(stderr, "runtime: failed to signal runtime initialization complete.\n");
-		abort();
-	}
+	pthread_cond_broadcast(&runtime_init_cond);
+	pthread_mutex_unlock(&runtime_init_mu);
 }
-
