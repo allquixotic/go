@@ -381,6 +381,13 @@ func newosproc(mp *m, stk unsafe.Pointer) {
 	}
 }
 
+// Used by the C library build mode. On Linux this function would allocate a
+// stack, but that's not necessary for Windows.
+//go:nosplit
+func newosproc0(mp *m, stk unsafe.Pointer) {
+	newosproc(mp, stk)
+}
+
 // Called to initialize a new m (including the bootstrap m).
 // Called on the parent thread (main thread in case of bootstrap), can allocate memory.
 func mpreinit(mp *m) {

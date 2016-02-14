@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -483,7 +484,14 @@ func (t *tester) registerTests() {
 			})
 		}
 		if t.supportedBuildmode("c-archive") {
-			t.registerTest("testcarchive", "../misc/cgo/testcarchive", "./test.bash")
+			var script string
+			if runtime.GOOS == "windows" {
+				script = ".\\test.bat"
+			} else {
+				script = "./test.bash"
+			}
+
+			t.registerTest("testcarchive", "../misc/cgo/testcarchive", script)
 		}
 		if t.supportedBuildmode("c-shared") {
 			t.registerTest("testcshared", "../misc/cgo/testcshared", "./test.bash")
@@ -653,7 +661,7 @@ func (t *tester) supportedBuildmode(mode string) bool {
 		}
 		switch pair {
 		case "darwin-386", "darwin-amd64", "darwin-arm", "darwin-arm64",
-			"linux-amd64", "linux-386":
+			"linux-amd64", "linux-386", "windows-amd64", "windows-386":
 			return true
 		}
 		return false
