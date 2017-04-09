@@ -2215,7 +2215,7 @@ func prefixof(ctxt *obj.Link, p *obj.Prog, a *obj.Addr) int {
 		return 0x26
 
 	case REG_TLS:
-		if ctxt.Flag_shared {
+		if ctxt.Flag_shared && ctxt.Headtype != obj.Hwindows {
 			// When building for inclusion into a shared library, an instruction of the form
 			//     MOV 0(CX)(TLS*1), AX
 			// becomes

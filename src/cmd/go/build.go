@@ -1078,12 +1078,13 @@ func (b *builder) action1(mode buildMode, depMode buildMode, p *Package, looksha
 			name := "a.out"
 			if p.exeName != "" {
 				name = p.exeName
-			} else if goos == "darwin" && buildBuildmode == "c-shared" && p.target != "" {
+			} else if (goos == "darwin" || goos == "windows") && buildBuildmode == "c-shared" && p.target != "" {
 				// On OS X, the linker output name gets recorded in the
 				// shared library's LC_ID_DYLIB load command.
 				// The code invoking the linker knows to pass only the final
 				// path element. Arrange that the path element matches what
 				// we'll install it as; otherwise the library is only loadable as "a.out".
+				// On Windows a similar process occurs, and it thus experiences similar                                                                                                       // problems and needs the same kind of support.
 				_, name = filepath.Split(p.target)
 			}
 			a.target = a.objdir + filepath.Join("exe", name) + exeSuffix

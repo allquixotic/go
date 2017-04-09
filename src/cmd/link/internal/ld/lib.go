@@ -1045,9 +1045,12 @@ func (l *Link) hostlink() {
 			if UseRelro() {
 				argv = append(argv, "-Wl,-z,relro")
 			}
-			// Pass -z nodelete to mark the shared library as
-			// non-closeable: a dlclose will do nothing.
-			argv = append(argv, "-shared", "-Wl,-z,nodelete")
+			argv = append(argv, "-shared")
+			if Headtype != obj.Hwindows {
+				// Pass -z nodelete to mark the shared library as
+				// non-closeable: a dlclose will do nothing.
+				argv = append(argv, "-Wl,-z,nodelete")
+			}
 		}
 	case BuildmodeShared:
 		if UseRelro() {
