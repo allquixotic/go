@@ -358,6 +358,7 @@ func buildModeInit() {
 				"android/amd64", "android/arm", "android/arm64", "android/386":
 				codegenArg = "-shared"
 			case "darwin/amd64", "darwin/386":
+			case "windows/amd64", "windows/386":
 			default:
 				fatalf("-buildmode=c-shared not supported on %s\n", platform)
 			}
